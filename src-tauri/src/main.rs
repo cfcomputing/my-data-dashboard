@@ -51,21 +51,6 @@ async fn get_post_as_string2(url: String) -> Result<serde_json::Value, Box<Reque
     Ok(s)
 }
 
-// async fn some_other_function(url: String) -> Option<serde_json::Value> {
-//     let webapistr = get_post_as_string2(url).await.unwrap();
-//     Some(webapistr)
-// }
-
-// #[tauri::command]
-// async fn testjson(url: String) -> Result<serde_json::Value, String> {
-//     let result: Option<serde_json::Value> = some_other_function(url).await;
-//     if let Some(message) = result {
-//         Ok(message)
-//     } else {
-//         Err("No result".into())
-//     }
-// }
-
 #[tauri::command]
 async fn testjson(url: String) -> Result<serde_json::Value, String> {
     let result = get_post_as_string2(url).await;
