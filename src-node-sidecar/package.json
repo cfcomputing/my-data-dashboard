@@ -1,0 +1,17 @@
+{
+  "name": "src-node-sidecar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "package": "pkg index.js --output ../src-tauri/binaries/node-app --targets node18-macos-x64,node18-linux-x64,node18-win-x64 --compress GZip"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tingodb": "^0.6.1"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.0"
+  }
+}

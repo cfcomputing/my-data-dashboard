@@ -5,7 +5,14 @@
 
 use reqwest::Error as RequestError;
 use rusqlite::{Connection, Error, Result};
+use serde_json::json;
 use tauri::{CustomMenuItem, Menu /*, MenuItem */, Submenu};
+
+#[derive(Debug)]
+struct Cat {
+    id: i32,
+    name: String,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -30,7 +37,72 @@ fn make_connection() -> Result<(), Error> {
          )",
         [],
     )?;
+
+    conn.execute(
+        "create table if not exists cattest (
+             id integer primary key,
+             name text not null
+         )",
+        [],
+    )?;
     return Ok(());
+}
+
+fn add_cat() -> Result<(), Error> {
+    let conn = Connection::open("cats.db")?;
+
+    conn.execute(
+        "insert into cattest (name)
+         values('test cat 1')
+        ",
+        [],
+    )?;
+    Ok(())
+}
+
+fn get_cats() -> Result<serde_json::Value, Error> {
+    let conn = Connection::open("cats.db")?;
+
+    let mut stmt = conn.prepare("SELECT c.id, c.name from cattest c")?;
+
+    let cats = stmt.query_map([], |row| {
+        Ok(Cat {
+            id: row.get(0)?,
+            name: row.get(1)?,
+        })
+    })?;
+
+    let mut vec = Vec::new();
+    for cat in cats {
+        println!("Found cat {:?}", cat);
+        if let Ok(c) = cat {
+            vec.push(json!({
+                "id": c.id,
+                "name": c.name,
+            }));
+        }
+    }
+
+    // Ok(Value::Object(map))
+    Ok(json!(vec))
+}
+
+#[tauri::command]
+async fn getcats() -> Result<serde_json::Value, String> {
+    let result = get_cats();
+    if let Ok(message) = result {
+        Ok(message)
+    } else {
+        Err("No result".into())
+    }
+}
+
+#[tauri::command]
+fn addcat() -> String {
+    if let Err(_err) = add_cat() {
+        return format!("error");
+    }
+    format!("cat added")
 }
 
 #[tauri::command]
@@ -61,6 +133,10 @@ async fn testjson(url: String) -> Result<serde_json::Value, String> {
     }
 }
 
+use tauri::{
+    api::process::{Command, CommandEvent},
+    Manager,
+};
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
     // let quit = CustomMenuItem::new("quit".to_string(), "Quit");
@@ -83,7 +159,34 @@ fn main() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![greet, connect, testjson])
+        .setup(|app| {
+            let window = app.get_window("main").unwrap();
+            tauri::async_runtime::spawn(async move {
+                let (mut rx, mut child) = Command::new_sidecar("node-app")
+                    .expect("failed to setup `app` sidecar")
+                    .spawn()
+                    .expect("Failed to spawn packaged node");
+
+                let mut i = 0;
+                while let Some(event) = rx.recv().await {
+                    if let CommandEvent::Stdout(line) = event {
+                        window
+                            .emit("message", Some(format!("'{}'", line)))
+                            .expect("failed to emit event");
+                        i += 1;
+                        if i == 4 {
+                            child.write("message from Rust\n".as_bytes()).unwrap();
+                            i = 0;
+                        }
+                    }
+                }
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            greet, connect, testjson, addcat, getcats
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
