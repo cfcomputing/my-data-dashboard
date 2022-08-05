@@ -1,0 +1,1 @@
+npm i --save git+ssh://git@github.com:cfcomputing/tingodb.git

@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "tingodb": "^0.6.1"
+    "tingodb": "github:cfcomputing/tingodb"
   },
   "devDependencies": {
     "pkg": "^5.8.0"
